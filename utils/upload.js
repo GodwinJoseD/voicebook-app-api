@@ -1,32 +1,30 @@
-// utils/upload.js
 const multer = require('multer');
-const multerS3 = require('multer-s3');
-const s3 = require('./awsConfig'); // AWS S3 configuration
+const { S3Client } = require('@aws-sdk/client-s3');
+const dotenv = require('dotenv');
+const uploadToS3 = require('../services/s3');
 
-// Multer storage configuration for uploading directly to S3
-const storage = multerS3({
-    s3: s3,
-    bucket: process.env.S3_BUCKET_NAME, // S3 Bucket Name
-    acl: 'public-read', // Allows files to be publicly readable
-    metadata: function (req, file, cb) {
-        cb(null, { fieldName: file.fieldname });
-    },
-    key: function (req, file, cb) {
-        cb(null, `stories/${Date.now()}-${file.originalname}`); // Unique file key
-    },
+dotenv.config();
+
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
 });
 
-// Multer setup to handle audio uploads (limiting file size and validating mime type)
+const storage = multer.memoryStorage();
+
 const upload = multer({
-    storage: storage,
-    limits: { fileSize: 100 * 1024 * 1024 }, // 100MB file size limit
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('audio/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Invalid file type. Only audio files are allowed.'));
-        }
-    },
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'audio/mpeg' || file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type, only MP3 and images are allowed!'), false);
+    }
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB file size limit
 });
 
 module.exports = upload;

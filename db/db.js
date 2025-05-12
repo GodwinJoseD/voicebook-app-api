@@ -1,22 +1,31 @@
-const {Pool}=require('pg');
-const dotenv=require('dotenv');
+const { Pool } = require("pg");
+const dotenv = require("dotenv");
 
 dotenv.config();
 
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL, // Ensure this environment variable is set
-    ssl: {
-      rejectUnauthorized: false, // For connecting to managed databases like Heroku Postgres
-    },
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false, // Ensures SSL works on RDS
+  },
+});
+
+pool.connect()
+  .then(() => console.log("✅ Connected to Amazon RDS PostgreSQL! 🚀"))
+  .catch((err) => {
+    console.error("❌ Initial connection error:", err);
+    process.exit(1); // Stop the app if connection fails
   });
-  
-  // Example query
-  pool.query('SELECT NOW()', (err, res) => {
-    if (err) {
-      console.error('Error executing query', err.stack);
-    } else {
-      console.log('Database connected:', res.rows[0]);
-    }
-  });
-  
-  module.exports = pool; // Export the pool for use in other files
+
+const query = async (text, params) => {
+  try {
+    return await pool.query(text, params);
+  } catch (err) {
+    console.error("❌ Query Error:", err);
+    throw err;
+  }
+};
+
+module.exports = {
+  query,
+};
